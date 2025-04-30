@@ -1,0 +1,23 @@
+import express from 'express';
+import MemberController from '../controllers/MemberController.js';
+
+const router = express.Router();
+
+// CRUD Operations
+router.post('/', MemberController.createMember);
+router.get('/', MemberController.getAllMembers);
+router.get('/:id', MemberController.getMemberById);
+router.put('/:id', MemberController.updateMember);
+router.delete('/:id', MemberController.deleteMember);
+
+// Queries and Filters
+router.get('/join-year/:year', MemberController.getMembersByJoinYear);
+router.get('/:id/books', MemberController.getMemberBooks);
+router.get('/borrowing-counts', MemberController.getBorrowingCounts);
+
+// Aggregation Routes
+router.get('/stats/type', MemberController.getMembershipTypeStats);
+router.get('/stats/avg-books', MemberController.getAverageBooksPerType);
+router.get('/stats/more-than/:count', MemberController.getMembersWithMoreThanXBooks);
+
+export default router; 
