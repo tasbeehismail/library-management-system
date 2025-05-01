@@ -1,83 +1,104 @@
 import { getDB } from '../config/database.js';
 import { ObjectId } from 'mongodb';
 
-class Book {
-    static async collection() {
+export default class Book {
+    constructor(data) {
+        this.title = data.title;
+        this.author = data.author;
+        this.genre = data.genre;
+        this.year_published = data.year_published;
+    }
+
+    static async getCollection() {
         const db = await getDB();
         return db.collection('books');
     }
+
+    static async getBorrowingsCollection() {
+        const db = await getDB();
+        return db.collection('borrowings');
+    }
+
     // CRUD Operations
-    static async create(bookData) {
-        const collection = await this.collection();
-        return await collection.insertOne(bookData);
+    static async create(data) {
+        const book = new Book(data);
+        const collection = await this.getCollection();
+        const result = await collection.insertOne(book);
+        return { ...book, _id: result.insertedId };
     }
 
     static async findAll() {
-        const collection = await this.collection();
-        return await collection.find({}).toArray();
+        const collection = await this.getCollection();
+        return await collection.find().toArray();
     }
 
     static async findById(id) {
-        const collection = await this.collection();
+        const collection = await this.getCollection();
         return await collection.findOne({ _id: new ObjectId(id) });
     }
 
-    static async update(id, updateData) {
-        const collection = await this.collection();
-        return await collection.updateOne(
+    static async update(id, data) {
+        const collection = await this.getCollection();
+        const result = await collection.findOneAndUpdate(
             { _id: new ObjectId(id) },
-            { $set: updateData }
+            { $set: data },
+            { returnDocument: 'after' }
         );
+        return result.value;
     }
 
     static async delete(id) {
-        const db = await getDB();
-        const borrowings = db.collection('borrowings');
-        await borrowings.deleteMany({ book_id: new ObjectId(id) });
+        const bookId = new ObjectId(id);
         
-        const collection = await this.collection();
-        return await collection.deleteOne({ _id: new ObjectId(id) });
+        // First delete all borrowings associated with this book
+        const borrowingsCollection = await this.getBorrowingsCollection();
+        await borrowingsCollection.deleteMany({ book_id: bookId });
+        
+        // Then delete the book
+        const collection = await this.getCollection();
+        const result = await collection.deleteOne({ _id: bookId });
+        return result.deletedCount > 0;
     }
 
     // Queries
     static async findByTitle(title) {
-        const collection = await this.collection();
+        const collection = await this.getCollection();
         return await collection.findOne({ title: title });
     }
 
     static async getBorrowers(bookId) {
-        const db = await getDB();
-        const borrowings = db.collection('borrowings');
-        const members = db.collection('members');
-        
-        return await borrowings.aggregate([
+        const borrowingsCollection = await this.getBorrowingsCollection();
+        return await borrowingsCollection.aggregate([
             { $match: { book_id: new ObjectId(bookId) } },
             {
                 $lookup: {
                     from: 'members',
                     localField: 'member_id',
                     foreignField: '_id',
-                    as: 'member_details'
+                    as: 'member'
                 }
             },
-            { $unwind: '$member_details' },
+            { $unwind: '$member' },
             {
                 $project: {
-                    _id: '$member_details._id',
-                    name: '$member_details.name',
-                    membership_type: '$member_details.membership_type',
+                    _id: '$member._id',
+                    name: '$member.name',
+                    email: '$member.email',
+                    membership_type: '$member.membership_type',
                     borrow_date: 1,
-                    return_date: 1
+                    return_date: 1,
+                    status: 1
                 }
+            },
+            {
+                $sort: { borrow_date: -1 }
             }
         ]).toArray();
     }
 
     static async getPopularBooks(minBorrowers = 2) {
-        const db = await getDB();
-        const borrowings = db.collection('borrowings');
-        
-        return await borrowings.aggregate([
+        const borrowingsCollection = await this.getBorrowingsCollection();
+        return await borrowingsCollection.aggregate([
             {
                 $group: {
                     _id: '$book_id',
@@ -90,19 +111,17 @@ class Book {
                     from: 'books',
                     localField: '_id',
                     foreignField: '_id',
-                    as: 'book_details'
+                    as: 'book'
                 }
             },
-            { $unwind: '$book_details' },
+            { $unwind: '$book' },
             {
                 $project: {
-                    title: '$book_details.title',
-                    author: '$book_details.author',
+                    title: '$book.title',
+                    author: '$book.author',
                     borrower_count: 1
                 }
             }
         ]).toArray();
     }
-}
-
-export default Book; 
+} 

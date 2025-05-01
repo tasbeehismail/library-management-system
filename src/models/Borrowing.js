@@ -6,27 +6,31 @@ export default class Borrowing {
         this.member_id = new ObjectId(data.member_id);
         this.book_id = new ObjectId(data.book_id);
         this.borrow_date = new Date(data.borrow_date);
-        this.return_date = new Date(data.return_date);
+        this.return_date = data.return_date ? new Date(data.return_date) : null;
         this.status = data.status || 'active';
     }
 
-    static get collection() {
-        return getDB().collection('borrowings');
+    static async getCollection() {
+        const db = await getDB();
+        return db.collection('borrowings');
     }
 
     // CRUD Operations
     static async create(data) {
         const borrowing = new Borrowing(data);
-        const result = await this.collection.insertOne(borrowing);
+        const collection = await this.getCollection();
+        const result = await collection.insertOne(borrowing);
         return { ...borrowing, _id: result.insertedId };
     }
 
     static async findAll() {
-        return await this.collection.find().toArray();
+        const collection = await this.getCollection();
+        return await collection.find().toArray();
     }
 
     static async findById(id) {
-        return await this.collection.findOne({ _id: new ObjectId(id) });
+        const collection = await this.getCollection();
+        return await collection.findOne({ _id: new ObjectId(id) });
     }
 
     static async update(id, data) {
@@ -36,7 +40,8 @@ export default class Borrowing {
         if (data.borrow_date) updateData.borrow_date = new Date(data.borrow_date);
         if (data.return_date) updateData.return_date = new Date(data.return_date);
 
-        const result = await this.collection.findOneAndUpdate(
+        const collection = await this.getCollection();
+        const result = await collection.findOneAndUpdate(
             { _id: new ObjectId(id) },
             { $set: updateData },
             { returnDocument: 'after' }
@@ -44,27 +49,47 @@ export default class Borrowing {
         return result.value;
     }
 
+    static async updateReturnDate(id, returnDate) {
+        const collection = await this.getCollection();
+        const result = await collection.findOneAndUpdate(
+            { _id: new ObjectId(id) },
+            { 
+                $set: { 
+                    return_date: new Date(returnDate),
+                    status: 'returned'
+                }
+            },
+            { returnDocument: 'after' }
+        );
+        return result.value;
+    }
+
     static async delete(id) {
-        const result = await this.collection.deleteOne({ _id: new ObjectId(id) });
+        const collection = await this.getCollection();
+        const result = await collection.deleteOne({ _id: new ObjectId(id) });
         return result.deletedCount > 0;
     }
 
     // Queries and Filters
     static async findByMemberId(memberId) {
-        return await this.collection.find({ member_id: new ObjectId(memberId) }).toArray();
+        const collection = await this.getCollection();
+        return await collection.find({ member_id: new ObjectId(memberId) }).toArray();
     }
 
     static async findByBookId(bookId) {
-        return await this.collection.find({ book_id: new ObjectId(bookId) }).toArray();
+        const collection = await this.getCollection();
+        return await collection.find({ book_id: new ObjectId(bookId) }).toArray();
     }
 
     static async findActive() {
-        return await this.collection.find({ status: 'active' }).toArray();
+        const collection = await this.getCollection();
+        return await collection.find({ status: 'active' }).toArray();
     }
 
     static async findOverdue() {
+        const collection = await this.getCollection();
         const now = new Date();
-        return await this.collection.find({
+        return await collection.find({
             status: 'active',
             return_date: { $lt: now }
         }).toArray();
@@ -72,7 +97,8 @@ export default class Borrowing {
 
     // Aggregation Methods
     static async getMemberStats() {
-        return await this.collection.aggregate([
+        const collection = await this.getCollection();
+        return await collection.aggregate([
             {
                 $group: {
                     _id: '$member_id',
@@ -93,7 +119,7 @@ export default class Borrowing {
             { $unwind: '$member' },
             {
                 $project: {
-                    member_name: { $concat: ['$member.first_name', ' ', '$member.last_name'] },
+                    member_name: '$member.name',
                     total_borrowings: 1,
                     active_borrowings: 1
                 }
@@ -102,7 +128,8 @@ export default class Borrowing {
     }
 
     static async getBookStats() {
-        return await this.collection.aggregate([
+        const collection = await this.getCollection();
+        return await collection.aggregate([
             {
                 $group: {
                     _id: '$book_id',
@@ -133,8 +160,9 @@ export default class Borrowing {
     }
 
     static async getOverdueStats() {
+        const collection = await this.getCollection();
         const now = new Date();
-        return await this.collection.aggregate([
+        return await collection.aggregate([
             {
                 $match: {
                     status: 'active',

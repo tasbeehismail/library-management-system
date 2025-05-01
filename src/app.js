@@ -1,14 +1,27 @@
 import express from 'express';
-import { connectDB } from './config/database.js';
+import { connectDB, closeDB } from './config/database.js';
 import memberRoutes from './routes/memberRoutes.js';
 import bookRoutes from './routes/bookRoutes.js';
 import borrowingRoutes from './routes/borrowingRoutes.js';
 
 const app = express();
-const PORT = 6000;
+const PORT = process.env.PORT || 6000;
 
 app.use(express.json());
 
+// Connect to MongoDB before setting up routes
+let db;
+
+app.use(async (req, res, next) => {
+    try {
+        if (!db) {
+            db = await connectDB();
+        }
+        next();
+    } catch (error) {
+        next(error);
+    }
+});
 
 app.use('/api/members', memberRoutes);
 app.use('/api/books', bookRoutes);
@@ -28,7 +41,7 @@ app.use((req, res) => {
 
 async function startServer() {
     try {
-        await connectDB();
+        db = await connectDB();
         
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
@@ -42,6 +55,16 @@ async function startServer() {
 process.on('unhandledRejection', (err) => {
     console.error('Unhandled Promise Rejection:', err);
     process.exit(1);
+});
+
+process.on('SIGINT', async () => {
+    try {
+        await closeDB();
+        process.exit(0);
+    } catch (error) {
+        console.error('Error during shutdown:', error);
+        process.exit(1);
+    }
 });
 
 startServer(); 

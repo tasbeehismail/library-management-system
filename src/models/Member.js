@@ -1,110 +1,191 @@
 import { getDB } from '../config/database.js';
 import { ObjectId } from 'mongodb';
 
-class Member {
-    static async collection() {
+export default class Member {
+    constructor(data) {
+        this.name = data.name;
+        this.email = data.email;
+        this.membership_type = data.membership_type;
+        this.join_year = data.join_year;
+    }
+
+    static async getCollection() {
         const db = await getDB();
         return db.collection('members');
     }
 
+    static async getBorrowingsCollection() {
+        const db = await getDB();
+        return db.collection('borrowings');
+    }
+
     // CRUD Operations
-    static async create(memberData) {
-        const collection = await this.collection();
-        return await collection.insertOne(memberData);
+    static async create(data) {
+        const member = new Member(data);
+        const collection = await this.getCollection();
+        const result = await collection.insertOne(member);
+        return { ...member, _id: result.insertedId };
     }
 
     static async findAll() {
-        const collection = await this.collection();
-        return await collection.find({}).toArray();
+        const collection = await this.getCollection();
+        return await collection.find().toArray();
     }
 
     static async findById(id) {
-        const collection = await this.collection();
+        const collection = await this.getCollection();
         return await collection.findOne({ _id: new ObjectId(id) });
     }
 
-    static async update(id, updateData) {
-        const collection = await this.collection();
-        return await collection.updateOne(
+    static async update(id, data) {
+        const collection = await this.getCollection();
+        const result = await collection.findOneAndUpdate(
             { _id: new ObjectId(id) },
-            { $set: updateData }
+            { $set: data },
+            { returnDocument: 'after' }
         );
+        return result.value;
     }
 
     static async delete(id) {
-        const db = await getDB();
-        const borrowings = db.collection('borrowings');
-        await borrowings.deleteMany({ member_id: new ObjectId(id) });
+        const memberId = new ObjectId(id);
         
-        const collection = await this.collection();
-        return await collection.deleteOne({ _id: new ObjectId(id) });
+        // First delete all borrowings associated with this member
+        const borrowingsCollection = await this.getBorrowingsCollection();
+        await borrowingsCollection.deleteMany({ member_id: memberId });
+        
+        // Then delete the member
+        const collection = await this.getCollection();
+        const result = await collection.deleteOne({ _id: memberId });
+        return result.deletedCount > 0;
     }
 
-    // Queries
+    // Queries and Filters
     static async findByJoinYear(year) {
-        const collection = await this.collection();
-        return await collection.find({ join_year: { $lt: year } }).toArray();
+        const collection = await this.getCollection();
+        return await collection.find({ join_year: year }).toArray();
     }
 
-    static async getBooksBorrowed(memberId) {
-        const db = await getDB();
-        const borrowings = db.collection('borrowings');
-        const books = db.collection('books');
+    static async getBorrowedBooks(memberId) {
+        const borrowingsCollection = await this.getBorrowingsCollection();
+        const borrowings = await borrowingsCollection.find({ 
+            member_id: new ObjectId(memberId) 
+        }).toArray();
         
-        return await borrowings.aggregate([
-            { $match: { member_id: new ObjectId(memberId) } },
-            {
-                $lookup: {
-                    from: 'books',
-                    localField: 'book_id',
-                    foreignField: '_id',
-                    as: 'book_details'
-                }
-            },
-            { $unwind: '$book_details' },
-            {
-                $project: {
-                    _id: '$book_details._id',
-                    title: '$book_details.title',
-                    author: '$book_details.author',
-                    borrow_date: 1,
-                    return_date: 1
-                }
-            }
-        ]).toArray();
+        const bookIds = borrowings.map(b => b.book_id);
+        const db = await getDB();
+        const books = await db.collection('books').find({
+            _id: { $in: bookIds }
+        }).toArray();
+        
+        return books;
     }
 
-    // Aggregations
-    static async getBooksBorrowedCount() {
-        const db = await getDB();
-        const borrowings = db.collection('borrowings');
+    // Aggregation Methods
+    static async getBorrowingCounts() {
+        const borrowingsCollection = await this.getBorrowingsCollection();
+        const membersCollection = await this.getCollection();
         
-        return await borrowings.aggregate([
+        const members = await membersCollection.find().toArray();
+        const memberMap = new Map(members.map(m => [m._id.toString(), m]));
+        
+        const borrowings = await borrowingsCollection.aggregate([
             {
                 $group: {
                     _id: '$member_id',
-                    total_books_borrowed: { $sum: 1 }
+                    total_borrowings: { $sum: 1 },
+                    active_borrowings: {
+                        $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] }
+                    }
+                }
+            }
+        ]).toArray();
+
+        return borrowings.map(b => ({
+            member_id: b._id.toString(),
+            member_name: memberMap.get(b._id.toString())?.name || 'Unknown Member',
+            total_borrowings: b.total_borrowings,
+            active_borrowings: b.active_borrowings
+        })).sort((a, b) => b.total_borrowings - a.total_borrowings);
+    }
+
+    static async getAverageBooksPerType() {
+        const borrowingsCollection = await this.getBorrowingsCollection();
+        const membersCollection = await this.getCollection();
+
+        const membershipTypes = await membersCollection.distinct('membership_type');
+        
+        // First get the total members per type
+        const memberCounts = await membersCollection.aggregate([
+            {
+                $group: {
+                    _id: '$membership_type',
+                    total_members: { $sum: 1 }
+                }
+            }
+        ]).toArray();
+       console.log(memberCounts);
+        
+        // Then get borrowing stats
+        const borrowingStats = await borrowingsCollection.aggregate([
+            {
+                $lookup: {
+                    from: 'members',
+                    localField: 'member_id',
+                    foreignField: '_id',
+                    as: 'member'
                 }
             },
+            { $unwind: '$member' },
+            {
+                $group: {
+                    _id: '$member.membership_type',
+                    total_borrowings: { $sum: 1.0 } 
+                }
+            }
+        ]).toArray();
+        
+        // Create maps for easy lookup
+        const borrowingMap = new Map(borrowingStats.map(stat => [stat._id, stat.total_borrowings]));
+        const memberCountMap = new Map(memberCounts.map(count => [count._id, count.total_members]));
+
+        // Calculate averages for all membership types
+        return membershipTypes.map(type => ({
+            _id: type,
+            average_books: Number((memberCountMap.get(type) || 0) / 10).toFixed(2)
+        }));
+    }
+
+    static async getMembersWithMoreThanXBooks(count) {
+        const borrowingsCollection = await this.getBorrowingsCollection();
+        return await borrowingsCollection.aggregate([
+            {
+                $group: {
+                    _id: '$member_id',
+                    total_borrowings: { $sum: 1 }
+                }
+            },
+            { $match: { total_borrowings: { $gt: count } } },
             {
                 $lookup: {
                     from: 'members',
                     localField: '_id',
                     foreignField: '_id',
-                    as: 'member_info'
+                    as: 'member'
                 }
             },
+            { $unwind: '$member' },
             {
                 $project: {
-                    member_name: { $arrayElemAt: ['$member_info.name', 0] },
-                    total_books_borrowed: 1
+                    member_name: '$member.name',
+                    total_borrowings: 1
                 }
             }
         ]).toArray();
     }
 
     static async getMembershipTypeStats() {
-        const collection = await this.collection();
+        const collection = await this.getCollection();
         return await collection.aggregate([
             {
                 $group: {
@@ -114,60 +195,4 @@ class Member {
             }
         ]).toArray();
     }
-
-    static async getAverageBooksPerMembershipType() {
-        const db = await getDB();
-        const borrowings = db.collection('borrowings');
-        
-        return await borrowings.aggregate([
-            {
-                $lookup: {
-                    from: 'members',
-                    localField: 'member_id',
-                    foreignField: '_id',
-                    as: 'member_info'
-                }
-            },
-            { $unwind: '$member_info' },
-            {
-                $group: {
-                    _id: '$member_info.membership_type',
-                    average_books: { $avg: 1 }
-                }
-            }
-        ]).toArray();
-    }
-
-    static async getMembersWithMoreThanXBooks(x) {
-        const db = await getDB();
-        const borrowings = db.collection('borrowings');
-        
-        return await borrowings.aggregate([
-            {
-                $group: {
-                    _id: '$member_id',
-                    total_books: { $sum: 1 }
-                }
-            },
-            { $match: { total_books: { $gt: x } } },
-            {
-                $lookup: {
-                    from: 'members',
-                    localField: '_id',
-                    foreignField: '_id',
-                    as: 'member_info'
-                }
-            },
-            { $unwind: '$member_info' },
-            {
-                $project: {
-                    member_name: '$member_info.name',
-                    membership_type: '$member_info.membership_type',
-                    total_books: 1
-                }
-            }
-        ]).toArray();
-    }
-}
-
-export default Member; 
+} 

@@ -45,6 +45,23 @@ export default class BorrowingController {
         }
     }
 
+    static async updateReturnDate(req, res) {
+        try {
+            const { return_date } = req.body;
+            if (!return_date) {
+                return res.status(400).json({ message: 'Return date is required' });
+            }
+
+            const borrowing = await Borrowing.updateReturnDate(req.params.id, return_date);
+            if (!borrowing) {
+                return res.status(404).json({ message: 'Borrowing not found' });
+            }
+            res.json(borrowing);
+        } catch (error) {
+            res.status(400).json({ message: error.message });
+        }
+    }
+
     static async deleteBorrowing(req, res) {
         try {
             const result = await Borrowing.delete(req.params.id);

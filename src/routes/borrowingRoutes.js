@@ -8,6 +8,7 @@ router.post('/', BorrowingController.createBorrowing);
 router.get('/', BorrowingController.getAllBorrowings);
 router.get('/:id', BorrowingController.getBorrowingById);
 router.put('/:id', BorrowingController.updateBorrowing);
+router.put('/:id/return', BorrowingController.updateReturnDate); 
 router.delete('/:id', BorrowingController.deleteBorrowing);
 
 // Queries and Filters

@@ -35,7 +35,7 @@ export const getBookById = async (req, res) => {
 export const updateBook = async (req, res) => {
     try {
         const result = await Book.update(req.params.id, req.body);
-        if (result.matchedCount === 0) {
+        if (!result) {
             return res.status(404).json({ error: 'Book not found' });
         }
         res.json({ message: 'Book updated successfully' });
@@ -47,7 +47,7 @@ export const updateBook = async (req, res) => {
 export const deleteBook = async (req, res) => {
     try {
         const result = await Book.delete(req.params.id);
-        if (result.deletedCount === 0) {
+        if (!result) {
             return res.status(404).json({ error: 'Book not found' });
         }
         res.json({ message: 'Book deleted successfully' });
@@ -59,8 +59,22 @@ export const deleteBook = async (req, res) => {
 // Queries and Filters
 export const getBookBorrowers = async (req, res) => {
     try {
+        // First check if book exists
+        const book = await Book.findById(req.params.id);
+        if (!book) {
+            return res.status(404).json({ error: 'Book not found' });
+        }
+
+        // Get all members who borrowed this book
         const borrowers = await Book.getBorrowers(req.params.id);
-        res.json(borrowers);
+        res.json({
+            book: {
+                _id: book._id,
+                title: book.title,
+                author: book.author
+            },
+            borrowers: borrowers
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

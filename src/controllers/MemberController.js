@@ -1,7 +1,7 @@
 import Member from '../models/Member.js';
 import { ObjectId } from 'mongodb';
 
-class MemberController {
+export default class MemberController {
     // CRUD Operations
     static async createMember(req, res) {
         try {
@@ -36,7 +36,7 @@ class MemberController {
     static async updateMember(req, res) {
         try {
             const result = await Member.update(req.params.id, req.body);
-            if (result.matchedCount === 0) {
+            if (!result) {
                 return res.status(404).json({ error: 'Member not found' });
             }
             res.json({ message: 'Member updated successfully' });
@@ -47,11 +47,21 @@ class MemberController {
 
     static async deleteMember(req, res) {
         try {
-            const result = await Member.delete(req.params.id);
-            if (result.deletedCount === 0) {
+            const member = await Member.findById(req.params.id);
+            if (!member) {
                 return res.status(404).json({ error: 'Member not found' });
             }
-            res.json({ message: 'Member deleted successfully' });
+
+            // Delete member and their borrowings
+            const result = await Member.delete(req.params.id);
+            if (!result) {
+                return res.status(500).json({ error: 'Failed to delete member' });
+            }
+
+            res.json({ 
+                message: 'Member and associated borrowings deleted successfully',
+                deletedMember: member
+            });
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
@@ -60,8 +70,7 @@ class MemberController {
     // Queries and Filters
     static async getMembersByJoinYear(req, res) {
         try {
-            const year = parseInt(req.params.year);
-            const members = await Member.findByJoinYear(year);
+            const members = await Member.findByJoinYear(parseInt(req.params.year));
             res.json(members);
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -70,18 +79,18 @@ class MemberController {
 
     static async getMemberBooks(req, res) {
         try {
-            const books = await Member.getBooksBorrowed(req.params.id);
+            const books = await Member.getBorrowedBooks(req.params.id);
             res.json(books);
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
     }
 
-    // Aggregation Functions
+    // Aggregation Routes
     static async getBorrowingCounts(req, res) {
         try {
-            const stats = await Member.getBooksBorrowedCount();
-            res.json(stats);
+            const counts = await Member.getBorrowingCounts();
+            res.json(counts);
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
@@ -89,7 +98,7 @@ class MemberController {
 
     static async getAverageBooksPerType(req, res) {
         try {
-            const stats = await Member.getAverageBooksPerMembershipType();
+            const stats = await Member.getAverageBooksPerType();
             res.json(stats);
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -98,7 +107,7 @@ class MemberController {
 
     static async getMembersWithMoreThanXBooks(req, res) {
         try {
-            const count = parseInt(req.params.count);
+            const count = parseInt(req.params.count) || 1;
             const members = await Member.getMembersWithMoreThanXBooks(count);
             res.json(members);
         } catch (error) {
@@ -114,6 +123,4 @@ class MemberController {
             res.status(500).json({ error: error.message });
         }
     }
-}
-
-export default MemberController; 
+} 

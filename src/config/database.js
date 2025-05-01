@@ -3,12 +3,12 @@ import dotenv from 'dotenv';
 dotenv.config();
 import { createIndexes } from './indexes.js';
 
-const uri = process.env.MONGODB_URI;
+const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/library_db';
 const client = new MongoClient(uri);
 
 let db;
 
-async function connectDB() {
+export async function connectDB() {
     try {
         if (!db) {
             await client.connect();
@@ -24,11 +24,17 @@ async function connectDB() {
     }
 }
 
-async function getDB() {
+export async function getDB() {
     if (!db) {
-        await connectDB();
+        db = await connectDB();
     }
     return db;
 }
 
-export { connectDB, getDB }; 
+export async function closeDB() {
+    if (client) {
+        await client.close();
+        db = null;
+        console.log('MongoDB connection closed');
+    }
+} 

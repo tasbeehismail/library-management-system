@@ -6,14 +6,14 @@ const router = express.Router();
 // CRUD Operations
 router.post('/', MemberController.createMember);
 router.get('/', MemberController.getAllMembers);
+
+// Queries and Filters
+router.get('/borrowing-counts', MemberController.getBorrowingCounts);
+router.get('/join-year/:year', MemberController.getMembersByJoinYear);
+router.get('/:id/books', MemberController.getMemberBooks);
 router.get('/:id', MemberController.getMemberById);
 router.put('/:id', MemberController.updateMember);
 router.delete('/:id', MemberController.deleteMember);
-
-// Queries and Filters
-router.get('/join-year/:year', MemberController.getMembersByJoinYear);
-router.get('/:id/books', MemberController.getMemberBooks);
-router.get('/borrowing-counts', MemberController.getBorrowingCounts);
 
 // Aggregation Routes
 router.get('/stats/type', MemberController.getMembershipTypeStats);
