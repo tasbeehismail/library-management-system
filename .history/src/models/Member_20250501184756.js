@@ -2,12 +2,11 @@ import { getDB } from '../config/database.js';
 import { ObjectId } from 'mongodb';
 
 export default class Member {
-    constructor(data) {
+    constructor(data, ) {
         this.name = data.name;
         this.email = data.email;
         this.membership_type = data.membership_type;
         this.join_year = data.join_year;
-        this.age = data.age
     }
 
     static async getCollection() {

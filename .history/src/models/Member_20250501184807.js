@@ -7,7 +7,7 @@ export default class Member {
         this.email = data.email;
         this.membership_type = data.membership_type;
         this.join_year = data.join_year;
-        this.age = data.age
+        this.age = data.
     }
 
     static async getCollection() {
