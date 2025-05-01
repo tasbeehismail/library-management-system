@@ -30,11 +30,6 @@ curl -s -X PUT "$BASE_URL/members/$MEMBER_ID" \
   -H "Content-Type: application/json" \
   -d '{"name": "Ahmed Updated", "membership_type": "new"}'
 
-# Delete a member (with cascade delete of borrowings)
-echo -e "\n${BLUE}Deleting a member:${NC}"
-curl -s -X DELETE "$BASE_URL/members/$MEMBER_ID"
-
-
 # 2. CRUD Operations for Books
 echo -e "\n${GREEN}2. CRUD Operations for Books${NC}"
 echo "-----------------------------"
@@ -55,10 +50,6 @@ echo -e "\n${BLUE}Updating a book:${NC}"
 curl -s -X PUT "$BASE_URL/books/$BOOK_ID" \
   -H "Content-Type: application/json" \
   -d '{"title": "Modern Egypt - Revised Edition"}'
-
-# Delete a book
-echo -e "\n${BLUE}Deleting a book:${NC}"
-curl -s -X DELETE "$BASE_URL/books/$BOOK_ID"
 
 
 # 3. Borrowing Operations
@@ -92,7 +83,7 @@ curl -s "$BASE_URL/books/$BOOK_ID/borrowers" | json_pp
 
 # Find members who joined before 2020
 echo -e "\n${BLUE}Members who joined before 2020:${NC}"
-curl -s "$BASE_URL/members/filter/join-year/2020" | json_pp
+curl -s "$BASE_URL/members/join-year/2020" | json_pp
 
 # Books borrowed by more than 2 members
 echo -e "\n${BLUE}Books borrowed by more than 2 members:${NC}"
@@ -121,3 +112,14 @@ curl -s "$BASE_URL/members/stats/borrowed-more-than/2" | json_pp
 # Members grouped by membership type
 echo -e "\n${BLUE}Members grouped by membership type:${NC}"
 curl -s "$BASE_URL/members/stats/membership-types" | json_pp
+
+
+# 6. Deleting Operations
+
+# Delete a member (with cascade delete of borrowings)
+echo -e "\n${BLUE}Deleting a member:${NC}"
+curl -s -X DELETE "$BASE_URL/members/$MEMBER_ID"
+
+# Delete a book
+echo -e "\n${BLUE}Deleting a book:${NC}"
+curl -s -X DELETE "$BASE_URL/books/$BOOK_ID"

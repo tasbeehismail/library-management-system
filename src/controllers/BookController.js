@@ -82,7 +82,9 @@ export const getBookBorrowers = async (req, res) => {
 
 export const getPopularBooks = async (req, res) => {
     try {
-        const minBorrowers = parseInt(req.query.minBorrowers) || 2;
+        const minBorrowers = parseInt(req.query.minBorrowers, 10) || 2;
+        console.log("Using minBorrowers:", minBorrowers);
+        
         const books = await Book.getPopularBooks(minBorrowers);
         res.json(books);
     } catch (error) {
