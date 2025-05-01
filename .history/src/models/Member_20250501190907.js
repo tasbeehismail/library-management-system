@@ -111,7 +111,6 @@ export default class Member {
     }
 
     static async getAverageBooksPerType() {
-        const borrowingsCollection = await this.getBorrowingsCollection();
         const membersCollection = await this.getCollection();
 
         const membershipTypes = await membersCollection.distinct('membership_type');
@@ -153,7 +152,7 @@ export default class Member {
         // Calculate averages for all membership types
         return membershipTypes.map(type => ({
             _id: type,
-            average_books: Number((borrowingMap.get(type)  || 0) / (memberCountMap.get(type)  || 1)).toFixed(2)
+            average_books: Number((memberCountMap.get(type) || 0) / 10).toFixed(2)
         }));
     }
 

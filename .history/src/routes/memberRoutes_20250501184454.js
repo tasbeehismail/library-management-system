@@ -11,7 +11,9 @@ router.get('/', MemberController.getAllMembers);
 router.get('/borrowing-counts', MemberController.getBorrowingCounts);
 router.get('/join-year/:year', MemberController.getMembersByJoinYear);
 router.get('/:id/books', MemberController.getMemberBooks);
-4
+router.get('/:id', MemberController.getMemberById);
+router.put('/:id', MemberController.updateMember);
+router.delete('/:id', MemberController.deleteMember);
 
 // Aggregation Routes
 router.get('/stats/type', MemberController.getMembershipTypeStats);
