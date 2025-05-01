@@ -44,7 +44,7 @@ export default class Book {
             { $set: data },
             { returnDocument: 'after' }
         );
-        return result.value;
+        return result;
     }
 
     static async delete(id) {

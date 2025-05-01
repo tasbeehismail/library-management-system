@@ -16,8 +16,8 @@ router.put('/:id', MemberController.updateMember);
 router.delete('/:id', MemberController.deleteMember);
 
 // Aggregation Routes
-router.get('/stats/type', MemberController.getMembershipTypeStats);
+router.get('/stats/membership-types', MemberController.getMembershipTypeStats);
 router.get('/stats/avg-books', MemberController.getAverageBooksPerType);
-router.get('/stats/more-than/:count', MemberController.getMembersWithMoreThanXBooks);
+router.get('/stats/borrowed-more-than/:count', MemberController.getMembersWithMoreThanXBooks);
 
 export default router; 
