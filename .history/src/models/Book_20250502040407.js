@@ -97,32 +97,49 @@ export default class Book {
     }
 
     static async getPopularBooks(minBorrowers = 2) {
-
-        const borrowingsCollection = await this.getBorrowingsCollection();
-        return await borrowingsCollection.aggregate([
-            {
-                $group: {
-                    _id: '$book_id',
-                    borrower_count: { $sum: 1 }
-                }
-            },
-            { $match: { borrower_count: { $gt: minBorrowers } } },
-            {
-                $lookup: {
-                    from: 'books',
-                    localField: '_id',
-                    foreignField: '_id',
-                    as: 'book'
-                }
-            },
-            { $unwind: '$book' },
-            {
-                $project: {
-                    title: '$book.title',
-                    author: '$book.author',
-                    borrower_count: 1
-                }
+    const borrowingsCollection = await this.getBorrowingsCollection();
+    return await borrowingsCollection.aggregate([
+        // Step 1: Match only borrowings with valid book_id format
+        {
+            $match: {
+                book_id: { $type: 'string', $regex: /^[a-fA-F0-9]{24}$/ }
             }
-        ]).toArray();
-    }
+        },
+        // Step 2: Group by book_id
+        {
+            $group: {
+                _id: '$book_id',
+                borrower_count: { $sum: 1 }
+            }
+        },
+        // Step 3: Filter by minBorrowers
+        {
+            $match: { borrower_count: { $gt: minBorrowers } }
+        },
+        // Step 4: Convert _id (book_id) to ObjectId
+        {
+            $addFields: {
+                convertedId: { $toObjectId: '$_id' }
+            }
+        },
+        // Step 5: Lookup from books collection
+        {
+            $lookup: {
+                from: 'books',
+                localField: 'convertedId',
+                foreignField: '_id',
+                as: 'book'
+            }
+        },
+        { $unwind: '$book' },
+        {
+            $project: {
+                title: '$book.title',
+                author: '$book.author',
+                borrower_count: 1
+            }
+        }
+    ]).toArray();
+}
+
 } 

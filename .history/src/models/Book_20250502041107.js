@@ -97,16 +97,33 @@ export default class Book {
     }
 
     static async getPopularBooks(minBorrowers = 2) {
-
         const borrowingsCollection = await this.getBorrowingsCollection();
+        
         return await borrowingsCollection.aggregate([
+            // Ensure book_id is a valid ObjectId string before converting
+            {
+                $match: {
+                    book_id: { $type: 'string', $regex: /^[a-fA-F0-9]{24}$/ }
+                }
+            },
+            // Convert string book_id to actual ObjectId
+            {
+                $addFields: {
+                    bookObjectId: { $toObjectId: '$book_id' }
+                }
+            },
+            // Group by the converted ObjectId
             {
                 $group: {
-                    _id: '$book_id',
+                    _id: '$bookObjectId',
                     borrower_count: { $sum: 1 }
                 }
             },
-            { $match: { borrower_count: { $gt: minBorrowers } } },
+            // Filter by minBorrowers
+            {
+                $match: { borrower_count: { $gt: minBorrowers } }
+            },
+            // Lookup book details from books collection
             {
                 $lookup: {
                     from: 'books',
@@ -116,8 +133,10 @@ export default class Book {
                 }
             },
             { $unwind: '$book' },
+            // Return clean projection
             {
                 $project: {
+                    _id: 0,
                     title: '$book.title',
                     author: '$book.author',
                     borrower_count: 1
@@ -125,4 +144,5 @@ export default class Book {
             }
         ]).toArray();
     }
+    
 } 

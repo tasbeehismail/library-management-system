@@ -97,32 +97,10 @@ export default class Book {
     }
 
     static async getPopularBooks(minBorrowers = 2) {
-
+        console.log("🏁 FUNCTION STARTED - DEBUG LOGS SHOULD APPEAR BELOW");
+        console.log("Basic test log:", { timestamp: new Date(), minBorrowers });
+        
         const borrowingsCollection = await this.getBorrowingsCollection();
-        return await borrowingsCollection.aggregate([
-            {
-                $group: {
-                    _id: '$book_id',
-                    borrower_count: { $sum: 1 }
-                }
-            },
-            { $match: { borrower_count: { $gt: minBorrowers } } },
-            {
-                $lookup: {
-                    from: 'books',
-                    localField: '_id',
-                    foreignField: '_id',
-                    as: 'book'
-                }
-            },
-            { $unwind: '$book' },
-            {
-                $project: {
-                    title: '$book.title',
-                    author: '$book.author',
-                    borrower_count: 1
-                }
-            }
-        ]).toArray();
+        // ... rest of your code
     }
 } 

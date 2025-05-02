@@ -107,6 +107,7 @@ export default class Book {
                 }
             },
             { $match: { borrower_count: { $gt: minBorrowers } } },
+            console.log(boo)
             {
                 $lookup: {
                     from: 'books',

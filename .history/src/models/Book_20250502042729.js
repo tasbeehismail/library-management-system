@@ -102,7 +102,7 @@ export default class Book {
         return await borrowingsCollection.aggregate([
             {
                 $group: {
-                    _id: '$book_id',
+                    _id: '$book',
                     borrower_count: { $sum: 1 }
                 }
             },

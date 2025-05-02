@@ -12,11 +12,6 @@ import {
 
 const router = express.Router();
 
-// Queries and Filters
-router.get('/popular', getPopularBooks);
-router.get('/:id/borrowers', getBookBorrowers);
-router.get('/title/:title', getBookByTitle);
-
 // CRUD Operations
 router.post('/', createBook);
 router.get('/', getAllBooks);
@@ -24,6 +19,9 @@ router.get('/:id', getBookById);
 router.put('/:id', updateBook);
 router.delete('/:id', deleteBook);
 
-
+// Queries and Filters
+router.get('/:id/borrowers', getBookBorrowers);
+router.get('/popular', getPopularBooks);
+router.get('/title/:title', getBookByTitle);
 
 export default router; 

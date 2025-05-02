@@ -97,32 +97,87 @@ export default class Book {
     }
 
     static async getPopularBooks(minBorrowers = 2) {
+    const borrowingsCollection = await this.getBorrowingsCollection();
 
-        const borrowingsCollection = await this.getBorrowingsCollection();
-        return await borrowingsCollection.aggregate([
-            {
-                $group: {
-                    _id: '$book_id',
-                    borrower_count: { $sum: 1 }
-                }
-            },
-            { $match: { borrower_count: { $gt: minBorrowers } } },
-            {
-                $lookup: {
-                    from: 'books',
-                    localField: '_id',
-                    foreignField: '_id',
-                    as: 'book'
-                }
-            },
-            { $unwind: '$book' },
-            {
-                $project: {
-                    title: '$book.title',
-                    author: '$book.author',
-                    borrower_count: 1
-                }
+    // ======================
+    // DEBUGGING SECTION START
+    // ======================
+    console.log("\n=== DEBUGGING INVALID book_id VALUES ===");
+    
+    // 1. Find all invalid book_id formats
+    const invalidRecords = await borrowingsCollection.find({
+        $or: [
+            { book_id: { $exists: false } },
+            { book_id: null },
+            { book_id: { $not: /^[0-9a-fA-F]{24}$/ } }
+        ]
+    }).toArray();
+
+    console.log(`Found ${invalidRecords.length} problematic records:`);
+    
+    // Log sample of invalid IDs with their types
+    invalidRecords.slice(0, 5).forEach(doc => {
+        console.log(`- Value: ${doc.book_id} (Type: ${typeof doc.book_id})`);
+    });
+
+    // 2. Check distribution of book_id types
+    const typeAnalysis = await borrowingsCollection.aggregate([
+        {
+            $project: {
+                type: { $type: "$book_id" }
             }
-        ]).toArray();
-    }
+        },
+        {
+            $group: {
+                _id: "$type",
+                count: { $sum: 1 }
+            }
+        }
+    ]).toArray();
+
+    console.log("\nbook_id Type Analysis:");
+    typeAnalysis.forEach(type => {
+        console.log(`- ${type._id}: ${type.count} records`);
+    });
+    // ======================
+    // DEBUGGING SECTION END
+    // ======================
+
+    return await borrowingsCollection.aggregate([
+        // Only include documents with valid ObjectIds
+        {
+            $match: {
+                book_id: { $regex: /^[0-9a-fA-F]{24}$/ }
+            }
+        },
+        {
+            $group: {
+                _id: '$book_id',
+                borrower_count: { $sum: 1 }
+            }
+        },
+        { $match: { borrower_count: { $gt: minBorrowers } } },
+        {
+            $addFields: {
+                convertedId: { $toObjectId: "$_id" }
+            }
+        },
+        {
+            $lookup: {
+                from: 'books',
+                localField: 'convertedId',
+                foreignField: '_id',
+                as: 'book'
+            }
+        },
+        { $unwind: '$book' },
+        {
+            $project: {
+                title: '$book.title',
+                author: '$book.author',
+                borrower_count: 1
+            }
+        }
+    ]).toArray();
+}
 } 

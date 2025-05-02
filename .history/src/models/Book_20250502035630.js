@@ -97,9 +97,13 @@ export default class Book {
     }
 
     static async getPopularBooks(minBorrowers = 2) {
-
         const borrowingsCollection = await this.getBorrowingsCollection();
         return await borrowingsCollection.aggregate([
+            {
+                $match: {
+                    book_id: { $regex: /^[a-f\d]{24}$/i } // Only include valid ObjectId strings
+                }
+            },
             {
                 $group: {
                     _id: '$book_id',
@@ -108,9 +112,14 @@ export default class Book {
             },
             { $match: { borrower_count: { $gt: minBorrowers } } },
             {
+                $addFields: {
+                    bookObjectId: { $toObjectId: '$_id' }
+                }
+            },
+            {
                 $lookup: {
                     from: 'books',
-                    localField: '_id',
+                    localField: 'bookObjectId',
                     foreignField: '_id',
                     as: 'book'
                 }
@@ -124,5 +133,6 @@ export default class Book {
                 }
             }
         ]).toArray();
+        
     }
 } 

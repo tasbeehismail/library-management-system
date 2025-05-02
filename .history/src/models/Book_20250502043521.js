@@ -97,32 +97,43 @@ export default class Book {
     }
 
     static async getPopularBooks(minBorrowers = 2) {
-
-        const borrowingsCollection = await this.getBorrowingsCollection();
-        return await borrowingsCollection.aggregate([
-            {
-                $group: {
-                    _id: '$book_id',
-                    borrower_count: { $sum: 1 }
-                }
-            },
-            { $match: { borrower_count: { $gt: minBorrowers } } },
-            {
-                $lookup: {
-                    from: 'books',
-                    localField: '_id',
-                    foreignField: '_id',
-                    as: 'book'
-                }
-            },
-            { $unwind: '$book' },
-            {
-                $project: {
-                    title: '$book.title',
-                    author: '$book.author',
-                    borrower_count: 1
-                }
+    const borrowingsCollection = await this.getBorrowingsCollection();
+    return await borrowingsCollection.aggregate([
+        {
+            $group: {
+                _id: '$book_id',
+                borrower_count: { $sum: 1 }
             }
-        ]).toArray();
-    }
+        },
+        { $match: { borrower_count: { $gt: minBorrowers } } },
+        // NEW: Ensure _id is a valid ObjectId string
+        { 
+            $match: { 
+                _id: { $regex: /^[0-9a-fA-F]{24}$/ } 
+            } 
+        },
+        // NEW: Convert to ObjectId
+        {
+            $addFields: {
+                convertedId: { $toObjectId: "$_id" }
+            }
+        },
+        {
+            $lookup: {
+                from: 'books',
+                localField: 'convertedId',
+                foreignField: '_id',
+                as: 'book'
+            }
+        },
+        { $unwind: '$book' },
+        {
+            $project: {
+                title: '$book.title',
+                author: '$book.author',
+                borrower_count: 1
+            }
+        }
+    ]).toArray();
+}
 } 

@@ -12,11 +12,6 @@ import {
 
 const router = express.Router();
 
-// Queries and Filters
-router.get('/popular', getPopularBooks);
-router.get('/:id/borrowers', getBookBorrowers);
-router.get('/title/:title', getBookByTitle);
-
 // CRUD Operations
 router.post('/', createBook);
 router.get('/', getAllBooks);

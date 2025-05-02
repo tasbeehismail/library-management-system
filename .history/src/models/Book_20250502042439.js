@@ -97,6 +97,7 @@ export default class Book {
     }
 
     static async getPopularBooks(minBorrowers = 2) {
+        console.log(typeof book_id);
 
         const borrowingsCollection = await this.getBorrowingsCollection();
         return await borrowingsCollection.aggregate([
