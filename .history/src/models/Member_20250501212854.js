@@ -149,7 +149,11 @@ export default class Member {
 
         return membershipTypes.map(type => ({
             _id: type,
+<<<<<<< HEAD
+            average_books: Number((borrowingMap.get(type)  || 0) / (memberCountMap.get(type)  || 1)).toFixed(2)
+=======
             average_books: Number((borrowingMap.get(type) || 0) / (memberCountMap.get(type) || 1)).toFixed(2)
+>>>>>>> b6c4e1c7a88d0087f090488d3acb2a79b80da6d2
         }));
     }
 

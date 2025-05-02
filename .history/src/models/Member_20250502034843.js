@@ -150,6 +150,7 @@ export default class Member {
         return membershipTypes.map(type => ({
             _id: type,
             average_books: Number((borrowingMap.get(type) || 0) / (memberCountMap.get(type) || 1)).toFixed(2)
+            average_books: Number((borrowingMap.get(type)  || 0) / (memberCountMap.get(type)  || 1)).toFixed(2)
         }));
     }
 
