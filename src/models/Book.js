@@ -97,31 +97,48 @@ export default class Book {
     }
 
     static async getPopularBooks(minBorrowers = 2) {
-        const borrowingsCollection = await this.getBorrowingsCollection();
-        return await borrowingsCollection.aggregate([
-            {
-                $group: {
-                    _id: '$book_id',
-                    borrower_count: { $sum: 1 }
+        try {
+            const borrowingsCollection = await this.getBorrowingsCollection();
+            const booksCollection = await this.getCollection();
+    
+            const pipeline = [
+                {
+                    $group: {
+                        _id: "$book_id",
+                        borrowCount: { $sum: 1 }
+                    }
+                },
+                {
+                    $match: {
+                        borrowCount: { $gte: minBorrowers }
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "books",
+                        localField: "_id",
+                        foreignField: "_id",
+                        as: "bookDetails"
+                    }
+                },
+                {
+                    $unwind: "$bookDetails"
+                },
+                {
+                    $project: {
+                        _id: 1,
+                        title: "$bookDetails.title",
+                        author: "$bookDetails.author",
+                        borrowCount: 1
+                    }
                 }
-            },
-            { $match: { borrower_count: { $gt: minBorrowers } } },
-            {
-                $lookup: {
-                    from: 'books',
-                    localField: '_id',
-                    foreignField: '_id',
-                    as: 'book'
-                }
-            },
-            { $unwind: '$book' },
-            {
-                $project: {
-                    title: '$book.title',
-                    author: '$book.author',
-                    borrower_count: 1
-                }
-            }
-        ]).toArray();
+            ];
+    
+            return await borrowingsCollection.aggregate(pipeline).toArray();
+        } catch (error) {
+            console.error("Error in getPopularBooks:", error);
+            throw new Error("Failed to fetch popular books");
+        }
     }
-} 
+
+}
