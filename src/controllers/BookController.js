@@ -82,18 +82,14 @@ export const getBookBorrowers = async (req, res) => {
 
 export const getPopularBooks = async (req, res) => {
     try {
-        const minBorrowers = Math.max(1, parseInt(req.query.minBorrowers) || 2);
-        console.log(minBorrowers);
-        
+        const minBorrowers = Math.max(1, parseInt(req.query.minBorrowers) || 2);        
         const books = await Book.getPopularBooks(minBorrowers);
         
         if (!books || books.length === 0) {
             return res.json({ message: "No books found meeting the criteria", data: [] });
         }
-        
         res.json(books);
     } catch (error) {
-        console.error("Controller error:", error);
         res.status(500).json({ 
             error: "Failed to fetch popular books",
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
