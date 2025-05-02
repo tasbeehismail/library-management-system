@@ -17,27 +17,18 @@ echo "--------------------------------"
 echo -e "\n${BLUE}Creating members:${NC}"
 MEMBER_RESPONSE=$(curl -s -X POST "$BASE_URL/members" \
   -H "Content-Type: application/json" \
-  -d '{"name": "Ahmed Mohammed", "age": "33", "membership_type": "premium", "join_year": 2025}')
-echo "Member 1: $MEMBER1_RESPONSE"
+  -d '{"name": "Ahmed Mohammed", "age": "30", "membership_type": "premium", "join_year": 2025}')
+echo "Member 1: $MEMBER_RESPONSE"
 
 # Extract member ID for later use
-MEMBER_ID=$(echo $MEMBER1_RESPONSE | grep -o '"insertedId":"[^"]*"' | cut -d'"' -f4)
+MEMBER_ID=$(echo $MEMBER_RESPONSE | grep -o '"_id":"[^"]*"' | cut -d'"' -f4)
 echo "Using member ID: $MEMBER_ID"
-
-# List all members
-echo -e "\n${BLUE}Listing all members:${NC}"
-curl -s "$BASE_URL/members" | json_pp
 
 # Update a member
 echo -e "\n${BLUE}Updating a member:${NC}"
 curl -s -X PUT "$BASE_URL/members/$MEMBER_ID" \
   -H "Content-Type: application/json" \
-  -d '{"name": "Ahmed Updated", "membership_type": "silver"}'
-
-# Delete a member (with cascade delete of borrowings)
-echo -e "\n${BLUE}Deleting a member:${NC}"
-curl -s -X DELETE "$BASE_URL/members/$MEMBER_ID"
-
+  -d '{"name": "Ahmed Updated", "membership_type": "new"}'
 
 # 2. CRUD Operations for Books
 echo -e "\n${GREEN}2. CRUD Operations for Books${NC}"
@@ -48,25 +39,17 @@ echo -e "\n${BLUE}Creating books:${NC}"
 BOOK_RESPONSE=$(curl -s -X POST "$BASE_URL/books" \
   -H "Content-Type: application/json" \
   -d '{"title": "Modern Egypt", "author": "Ahmed Ismail", "genre": "History", "year_published": 2020}')
-echo "Book 1: $BOOK1_RESPONSE"
+echo "Book 1: $BOOK_RESPONSE"
 
 # Extract book ID for later use
-BOOK_ID=$(echo $BOOK1_RESPONSE | grep -o '"insertedId":"[^"]*"' | cut -d'"' -f4)
+BOOK_ID=$(echo $BOOK_RESPONSE | grep -o '"_id":"[^"]*"' | cut -d'"' -f4)
 echo "Using book ID: $BOOK_ID"
-
-# List all books
-echo -e "\n${BLUE}Listing all books:${NC}"
-curl -s "$BASE_URL/books" | json_pp
 
 # Update a book
 echo -e "\n${BLUE}Updating a book:${NC}"
 curl -s -X PUT "$BASE_URL/books/$BOOK_ID" \
   -H "Content-Type: application/json" \
   -d '{"title": "Modern Egypt - Revised Edition"}'
-
-# Delete a book
-echo -e "\n${BLUE}Deleting a book:${NC}"
-curl -s -X DELETE "$BASE_URL/books/$BOOK_ID"
 
 
 # 3. Borrowing Operations
@@ -81,8 +64,8 @@ BORROWING_RESPONSE=$(curl -s -X POST "$BASE_URL/borrowings" \
 echo "$BORROWING_RESPONSE"
 
 # Extract borrowing ID
-BORROWING_ID=$(echo $BORROWING_RESPONSE | grep -o '"insertedId":"[^"]*"' | cut -d'"' -f4)
-echo "Using borrowing ID: $BORROWING_ID"
+BORROWING_ID=$(echo $BORROWING_RESPONSE | grep -o '"_id":"[^"]*"' | cut -d'"' -f4)
+echo "\nUsing borrowing ID: $BORROWING_ID"
 
 # Update return date
 echo -e "\n${BLUE}Updating return date:${NC}"
@@ -100,7 +83,7 @@ curl -s "$BASE_URL/books/$BOOK_ID/borrowers" | json_pp
 
 # Find members who joined before 2020
 echo -e "\n${BLUE}Members who joined before 2020:${NC}"
-curl -s "$BASE_URL/members/filter/join-year/2020" | json_pp
+curl -s "$BASE_URL/members/join-year/2020" | json_pp
 
 # Books borrowed by more than 2 members
 echo -e "\n${BLUE}Books borrowed by more than 2 members:${NC}"
@@ -130,9 +113,8 @@ curl -s "$BASE_URL/members/stats/borrowed-more-than/2" | json_pp
 echo -e "\n${BLUE}Members grouped by membership type:${NC}"
 curl -s "$BASE_URL/members/stats/membership-types" | json_pp
 
-# 6. Delete Operations
-echo -e "\n${GREEN}6. Delete Operations${NC}"
-echo "-------------------"
+
+# 6. Deleting Operations
 
 # Delete a member (with cascade delete of borrowings)
 echo -e "\n${BLUE}Deleting a member:${NC}"
@@ -141,5 +123,3 @@ curl -s -X DELETE "$BASE_URL/members/$MEMBER_ID"
 # Delete a book
 echo -e "\n${BLUE}Deleting a book:${NC}"
 curl -s -X DELETE "$BASE_URL/books/$BOOK_ID"
-
-echo -e "\n${GREEN}Tests completed!${NC}" 

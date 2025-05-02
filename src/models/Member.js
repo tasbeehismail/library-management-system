@@ -5,6 +5,7 @@ export default class Member {
     constructor(data) {
         this.name = data.name;
         this.email = data.email;
+        this.age = data.age;
         this.membership_type = data.membership_type;
         this.join_year = data.join_year;
         this.age = data.age
@@ -45,7 +46,7 @@ export default class Member {
             { $set: data },
             { returnDocument: 'after' }
         );
-        return result.value;
+        return result;
     }
 
     static async delete(id) {
@@ -116,7 +117,6 @@ export default class Member {
 
         const membershipTypes = await membersCollection.distinct('membership_type');
         
-        // First get the total members per type
         const memberCounts = await membersCollection.aggregate([
             {
                 $group: {
@@ -125,9 +125,7 @@ export default class Member {
                 }
             }
         ]).toArray();
-       console.log(memberCounts);
         
-        // Then get borrowing stats
         const borrowingStats = await borrowingsCollection.aggregate([
             {
                 $lookup: {
@@ -146,13 +144,12 @@ export default class Member {
             }
         ]).toArray();
         
-        // Create maps for easy lookup
         const borrowingMap = new Map(borrowingStats.map(stat => [stat._id, stat.total_borrowings]));
         const memberCountMap = new Map(memberCounts.map(count => [count._id, count.total_members]));
 
-        // Calculate averages for all membership types
         return membershipTypes.map(type => ({
             _id: type,
+            average_books: Number((borrowingMap.get(type) || 0) / (memberCountMap.get(type) || 1)).toFixed(2)
             average_books: Number((borrowingMap.get(type)  || 0) / (memberCountMap.get(type)  || 1)).toFixed(2)
         }));
     }

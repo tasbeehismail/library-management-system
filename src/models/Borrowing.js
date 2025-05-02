@@ -46,7 +46,7 @@ export default class Borrowing {
             { $set: updateData },
             { returnDocument: 'after' }
         );
-        return result.value;
+        return result;
     }
 
     static async updateReturnDate(id, returnDate) {
@@ -61,7 +61,7 @@ export default class Borrowing {
             },
             { returnDocument: 'after' }
         );
-        return result.value;
+        return result;
     }
 
     static async delete(id) {

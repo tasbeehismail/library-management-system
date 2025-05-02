@@ -34,7 +34,7 @@ export default class MemberController {
     }
 
     static async updateMember(req, res) {
-        try {
+        try {                        
             const result = await Member.update(req.params.id, req.body);
             if (!result) {
                 return res.status(404).json({ error: 'Member not found' });
